@@ -204,7 +204,19 @@ void Backend::addFiles(const QStringList &paths) {
     QList<QueueJob> additions;
     QStringList unsupported;
 
+    QStringList expandedPaths;
     for (const QString &rawPath : paths) {
+        const QFileInfo info(rawPath);
+        if (info.isDir()) {
+            const QDir dir(info.absoluteFilePath());
+            for (const QFileInfo &entry : dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot, QDir::Name))
+                expandedPaths.append(entry.absoluteFilePath());
+        } else {
+            expandedPaths.append(rawPath);
+        }
+    }
+
+    for (const QString &rawPath : expandedPaths) {
         const QFileInfo info(rawPath);
         if (!info.exists() || !info.isFile())
             continue;

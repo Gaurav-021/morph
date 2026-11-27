@@ -1,6 +1,8 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QProcess>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -393,6 +395,53 @@ private slots:
         QCOMPARE(translator.translate("Main", "%n files", nullptr, 25), QString("%n файлов"));
         QCOMPARE(Translator::pluralCategory("ar", 11), QString("many"));
         QCOMPARE(Translator::pluralCategory("ja", 1), QString("other"));
+    }
+
+    void backendExpandsDroppedDirectories()
+    {
+        QTemporaryDir dir;
+        write(dir.filePath("one.png"), "png");
+        write(dir.filePath("two.wav"), "wav");
+        write(dir.filePath("ignored.unknown"), "x");
+
+        Backend backend(nullptr, ToolRegistry::detect());
+        backend.addFiles({dir.path()});
+        QCOMPARE(backend.count(), 2);
+    }
+
+    void allI18nCatalogsAreValidAndComplete()
+    {
+        QFile refFile(":/i18n/da.json");
+        QVERIFY(refFile.open(QIODevice::ReadOnly));
+        QJsonParseError refErr;
+        const QJsonObject refObj = QJsonDocument::fromJson(refFile.readAll(), &refErr).object();
+        QCOMPARE(refErr.error, QJsonParseError::NoError);
+        QVERIFY(!refObj.isEmpty());
+
+        const QStringList codes{
+            "ar", "da", "de", "es-MX", "fr", "hi", "it", "ja", "ko",
+            "nl", "no", "pl", "pt", "pt-BR", "ru", "sv", "tr", "uk", "zh-CN"
+        };
+        for (const QString &code : codes) {
+            QFile f(QString(":/i18n/%1.json").arg(code));
+            QVERIFY2(f.open(QIODevice::ReadOnly), qPrintable(code));
+            QJsonParseError err;
+            const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
+            QVERIFY2(err.error == QJsonParseError::NoError, qPrintable(code + ": " + err.errorString()));
+            QVERIFY2(doc.isObject(), qPrintable(code));
+            const QJsonObject obj = doc.object();
+            for (auto it = refObj.begin(); it != refObj.end(); ++it) {
+                QVERIFY2(obj.contains(it.key()), qPrintable(code + " missing key: " + it.key()));
+                const QJsonValue val = obj.value(it.key());
+                if (it.value().isObject()) {
+                    QVERIFY2(val.isObject(), qPrintable(code + " plural must be object: " + it.key()));
+                    QVERIFY2(val.toObject().contains("other"), qPrintable(code + " missing 'other': " + it.key()));
+                } else {
+                    QVERIFY2(val.isString() && !val.toString().isEmpty(),
+                             qPrintable(code + " empty translation: " + it.key()));
+                }
+            }
+        }
     }
 
 private:

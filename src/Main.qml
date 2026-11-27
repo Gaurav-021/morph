@@ -57,7 +57,12 @@ ApplicationWindow {
     Shortcut { sequence: "Ctrl+O"; context: Qt.ApplicationShortcut; onActivated: backend.pickFiles() }
     Shortcut { sequence: "D"; context: Qt.ApplicationShortcut; onActivated: backend.pickOutputDirectory() }
     Shortcut { sequence: "Space"; context: Qt.ApplicationShortcut; onActivated: backend.primaryAction() }
-    Shortcut { sequence: "Return"; context: Qt.ApplicationShortcut; onActivated: if (backend.count > 0) backend.primaryAction() }
+    Shortcut {
+        sequence: "Return"
+        context: Qt.ApplicationShortcut
+        enabled: !qualityBox.popup.visible && !scaleBox.popup.visible && !win.helpVisible && !win.quitPromptVisible
+        onActivated: if (backend.count > 0) backend.primaryAction()
+    }
     Shortcut { sequence: "Delete"; context: Qt.ApplicationShortcut; onActivated: backend.removeAt(backend.selectedIndex) }
     Shortcut { sequence: "Backspace"; context: Qt.ApplicationShortcut; onActivated: backend.removeAt(backend.selectedIndex) }
     Shortcut { sequence: "Up"; context: Qt.ApplicationShortcut; onActivated: backend.selectedIndex = Math.max(0, backend.selectedIndex - 1) }
