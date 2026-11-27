@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file alias="Main.qml">Main.qml</file>
+        <file alias="CompactCombo.qml">CompactCombo.qml</file>
         <file alias="ShortcutOverlay.qml">ShortcutOverlay.qml</file>
         <file alias="SKILL.md">SKILL.md</file>
         <file alias="i18n/en.json">i18n/en.json</file>

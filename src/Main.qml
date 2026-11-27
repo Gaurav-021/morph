@@ -189,6 +189,10 @@ ApplicationWindow {
                 Button {
                     id: helpBtn
                     text: "?"
+                    leftPadding: 0
+                    rightPadding: 0
+                    topPadding: 0
+                    bottomPadding: 0
                     implicitWidth: 36
                     implicitHeight: 36
                     onClicked: win.helpVisible = !win.helpVisible
@@ -248,7 +252,7 @@ ApplicationWindow {
             // Options strip: Quality, Size, Output folder
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: optsRow.implicitHeight + 16
+                implicitHeight: optsRow.implicitHeight + 14
                 color: "#151518"
                 border.color: "#25252b"
                 border.width: 1
@@ -257,8 +261,10 @@ ApplicationWindow {
                 RowLayout {
                     id: optsRow
                     anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 14
+                    anchors.margins: 8
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
 
                     Label {
                         text: qsTr("Quality")
@@ -266,10 +272,9 @@ ApplicationWindow {
                         color: "#a1a1aa"
                     }
 
-                    ComboBox {
+                    CompactCombo {
                         id: qualityBox
-                        Layout.preferredWidth: 156
-                        Material.roundedScale: theme.radius > 0 ? Material.SmallScale : Material.NotRounded
+                        Layout.preferredWidth: 124
                         enabled: !backend.busy
                         model: [
                             { value: "high", label: qsTr("High") },
@@ -287,10 +292,9 @@ ApplicationWindow {
                         color: "#a1a1aa"
                     }
 
-                    ComboBox {
+                    CompactCombo {
                         id: scaleBox
-                        Layout.preferredWidth: 155
-                        Material.roundedScale: theme.radius > 0 ? Material.SmallScale : Material.NotRounded
+                        Layout.preferredWidth: 142
                         enabled: !backend.busy
                         model: [
                             { value: "original", label: qsTr("Original") },
@@ -321,7 +325,7 @@ ApplicationWindow {
                         text: backend.outputDirectory.length > 0
                               ? backend.outputDirectory.split("/").pop() || backend.outputDirectory
                               : qsTr("Same folder")
-                        implicitHeight: 34
+                        implicitHeight: 32
                         leftPadding: 12
                         rightPadding: 12
                         enabled: !backend.busy
@@ -536,10 +540,9 @@ ApplicationWindow {
                                         font.pixelSize: 14
                                     }
 
-                                    ComboBox {
+                                    CompactCombo {
                                         id: targetCombo
-                                        Layout.preferredWidth: 132
-                                        Material.roundedScale: theme.radius > 0 ? Material.SmallScale : Material.NotRounded
+                                        Layout.preferredWidth: 112
                                         enabled: !backend.busy && delegateRoot.rowStatus !== "running"
                                         model: delegateRoot.rowTargets
                                         currentIndex: Math.max(0, delegateRoot.rowTargets.indexOf(delegateRoot.rowTargetFormat))
@@ -547,6 +550,7 @@ ApplicationWindow {
                                         delegate: ItemDelegate {
                                             width: targetCombo.width
                                             text: "." + modelData.toUpperCase()
+                                            font.pixelSize: 12
                                             highlighted: targetCombo.highlightedIndex === index
                                         }
                                         onActivated: backend.setTargetFormat(delegateRoot.rowIndex, delegateRoot.rowTargets[currentIndex])
