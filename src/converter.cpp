@@ -305,6 +305,23 @@ QStringList Converter::buildGhostscriptArgs(const QString &inputPath, const QStr
     };
 }
 
+QStringList Converter::buildLibreOfficeArgs(const QString &inputPath, const QString &profileDir,
+                                            const QString &outDir, const QString &sourceExt,
+                                            const QString &targetExt) {
+    QStringList args{
+        "--headless",
+        "--norestore",
+        QString("-env:UserInstallation=file://%1").arg(profileDir)
+    };
+    const QString src = normalizeExt(sourceExt);
+    if (src == "html" || src == "htm")
+        args << "--infilter=HTML (StarWriter)";
+    args << "--convert-to" << libreOfficeFormatName(normalizeExt(targetExt))
+         << "--outdir" << outDir
+         << inputPath;
+    return args;
+}
+
 bool Converter::atomicInstallFile(const QString &tempOrStagedPath, const QString &finalDestPath, QString *error) {
     const QFileInfo srcInfo(tempOrStagedPath);
     const QFileInfo dstInfo(finalDestPath);
@@ -449,16 +466,7 @@ ConversionResult Converter::runSync(const QString &sourcePath, const QString &ta
             res.error = QObject::tr("Could not create temporary staging directory");
             return res;
         }
-        const QStringList args{
-            "--headless",
-            "--norestore",
-            QString("-env:UserInstallation=file://%1").arg(profileDir.path()),
-            "--convert-to",
-            libreOfficeFormatName(dstExt),
-            "--outdir",
-            stageDir.path(),
-            sourcePath
-        };
+        const QStringList args = buildLibreOfficeArgs(sourcePath, profileDir.path(), stageDir.path(), srcExt, dstExt);
         if (!runTool(exe, args, {}, &res.error))
             return res;
 

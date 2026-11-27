@@ -685,14 +685,8 @@ void Backend::startSingleStepJob(int row) {
             finishActiveJob(false, {}, {}, tr("Could not create temporary staging directory"));
             return;
         }
-        const QString loFormat = (dst == "txt") ? "txt:Text" : dst;
-        const QStringList args{
-            "--headless", "--norestore",
-            QString("-env:UserInstallation=file://%1").arg(m_profileDir->path()),
-            "--convert-to", loFormat,
-            "--outdir", m_stageDir->path(),
-            job.sourcePath
-        };
+        const QStringList args = Converter::buildLibreOfficeArgs(
+            job.sourcePath, m_profileDir->path(), m_stageDir->path(), job.sourceExt, dst);
         connect(m_process, &QProcess::finished, this, [this](int code, QProcess::ExitStatus status) {
             const QueueJob cur = m_model.jobAt(m_activeRow);
             if (m_cancelRequested || code != 0 || status != QProcess::NormalExit) {

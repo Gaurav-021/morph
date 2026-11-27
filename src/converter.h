@@ -53,5 +53,8 @@ public:
                                        const ConversionOptions &options);
     static QStringList buildGhostscriptArgs(const QString &inputPath, const QString &tempOutputPath,
                                             const ConversionOptions &options);
+    static QStringList buildLibreOfficeArgs(const QString &inputPath, const QString &profileDir,
+                                            const QString &outDir, const QString &sourceExt,
+                                            const QString &targetExt);
     static bool atomicInstallFile(const QString &tempOrStagedPath, const QString &finalDestPath, QString *error);
 };

@@ -188,6 +188,136 @@ private slots:
         QVERIFY(QFileInfo(arcRes.outputPath).size() > 0);
     }
 
+    void convertsVideoAndAudioEndToEnd()
+    {
+        const ToolRegistry tools = ToolRegistry::detect();
+        if (!tools.has("ffmpeg"))
+            QSKIP("ffmpeg not installed");
+
+        QTemporaryDir dir;
+        const QString movPath = dir.filePath("clip.mov");
+        QProcess mkMov;
+        mkMov.start(tools.find("ffmpeg"), {
+            "-hide_banner", "-y",
+            "-f", "lavfi", "-i", "testsrc=duration=1:size=160x120:rate=10",
+            "-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+            movPath
+        });
+        QVERIFY(mkMov.waitForFinished(15000));
+        QCOMPARE(mkMov.exitCode(), 0);
+
+        ConversionOptions opts;
+        opts.quality = "compact";
+
+        const ConversionResult mp4Res = Converter::runSync(movPath, "mp4", opts, tools);
+        QVERIFY2(mp4Res.ok, qPrintable(mp4Res.error));
+        QVERIFY(QFileInfo::exists(mp4Res.outputPath));
+        QVERIFY(QFileInfo(mp4Res.outputPath).size() > 0);
+
+        const ConversionResult gifRes = Converter::runSync(movPath, "gif", opts, tools);
+        QVERIFY2(gifRes.ok, qPrintable(gifRes.error));
+        QVERIFY(QFileInfo::exists(gifRes.outputPath));
+        QVERIFY(QFileInfo(gifRes.outputPath).size() > 0);
+
+        const ConversionResult mp3Res = Converter::runSync(movPath, "mp3", opts, tools);
+        QVERIFY2(mp3Res.ok, qPrintable(mp3Res.error));
+        QVERIFY(QFileInfo::exists(mp3Res.outputPath));
+        QVERIFY(QFileInfo(mp3Res.outputPath).size() > 0);
+
+        // Also test async Backend queue conversion with progress/completion.
+        Backend backend(nullptr, tools);
+        backend.addFiles({mp3Res.outputPath});
+        backend.setTargetFormat(0, "wav");
+        backend.convertAll();
+        QVERIFY(backend.busy());
+        QTRY_VERIFY_WITH_TIMEOUT(!backend.busy(), 15000);
+        QCOMPARE(backend.completedCount(), 1);
+        QCOMPARE(backend.failedCount(), 0);
+        auto *model = qobject_cast<QueueModel *>(backend.queue());
+        QVERIFY(model != nullptr);
+        QCOMPARE(model->jobAt(0).status, QString("done"));
+        QVERIFY(QFileInfo::exists(model->jobAt(0).outputPath));
+        QVERIFY(QFileInfo(model->jobAt(0).outputPath).size() > 0);
+    }
+
+    void convertsDocumentAndPdfEndToEnd()
+    {
+        const ToolRegistry tools = ToolRegistry::detect();
+        if (!tools.has("libreoffice") || !tools.has("pdftoppm") || !tools.has("pdftotext") || !tools.has("gs"))
+            QSKIP("libreoffice / poppler / gs not installed");
+
+        QTemporaryDir dir;
+        const QString htmlPath = dir.filePath("note.html");
+        write(htmlPath,
+              "<html><body>"
+              "<div>Page 1 Morph Document</div>"
+              "<div style=\"page-break-before: always;\">Page 2 Morph Document</div>"
+              "</body></html>\n");
+
+        ConversionOptions opts;
+        opts.quality = "balanced";
+
+        // Document (HTML) -> DOCX via LibreOffice
+        const ConversionResult docxRes = Converter::runSync(htmlPath, "docx", opts, tools);
+        QVERIFY2(docxRes.ok, qPrintable(docxRes.error));
+        QVERIFY(QFileInfo::exists(docxRes.outputPath));
+        QVERIFY(QFileInfo(docxRes.outputPath).size() > 0);
+
+        // Document (HTML) -> multi-page PDF via LibreOffice
+        const ConversionResult pdfRes = Converter::runSync(htmlPath, "pdf", opts, tools);
+        QVERIFY2(pdfRes.ok, qPrintable(pdfRes.error));
+        QVERIFY(QFileInfo::exists(pdfRes.outputPath));
+        QVERIFY(QFileInfo(pdfRes.outputPath).size() > 0);
+
+        // PDF -> compressed PDF via Ghostscript
+        const ConversionResult compRes = Converter::runSync(pdfRes.outputPath, "pdf", opts, tools);
+        QVERIFY2(compRes.ok, qPrintable(compRes.error));
+        QVERIFY(QFileInfo::exists(compRes.outputPath));
+        QVERIFY(QFileInfo(compRes.outputPath).size() > 0);
+
+        // PDF -> TXT via pdftotext
+        const ConversionResult txtRes = Converter::runSync(pdfRes.outputPath, "txt", opts, tools);
+        QVERIFY2(txtRes.ok, qPrintable(txtRes.error));
+        QFile txtFile(txtRes.outputPath);
+        QVERIFY(txtFile.open(QIODevice::ReadOnly));
+        const QString extracted = QString::fromUtf8(txtFile.readAll());
+        QVERIFY(extracted.contains("Page 1 Morph Document"));
+        QVERIFY(extracted.contains("Page 2 Morph Document"));
+
+        // Single-page PDF -> PNG via pdftoppm
+        const ConversionResult singlePngRes = Converter::runSync(pdfRes.outputPath, "png", opts, tools);
+        QVERIFY2(singlePngRes.ok, qPrintable(singlePngRes.error));
+        QCOMPARE(singlePngRes.outputFiles.size(), 1);
+        QVERIFY(QFileInfo::exists(singlePngRes.outputPath));
+        QVERIFY(QFileInfo(singlePngRes.outputPath).size() > 0);
+
+        // Multi-page PDF -> PNG and WebP via pdftoppm (+ magick)
+        if (tools.has("magick")) {
+            const QString multiPdf = dir.filePath("multi.pdf");
+            QProcess mkMulti;
+            mkMulti.start(tools.find("magick"), {"-size", "64x64", "xc:tomato", "xc:steelblue", multiPdf});
+            QVERIFY(mkMulti.waitForFinished(5000));
+            QCOMPARE(mkMulti.exitCode(), 0);
+
+            const ConversionResult pngRes = Converter::runSync(multiPdf, "png", opts, tools);
+            QVERIFY2(pngRes.ok, qPrintable(pngRes.error));
+            QCOMPARE(pngRes.outputFiles.size(), 2);
+            for (const QString &pagePath : pngRes.outputFiles) {
+                QVERIFY(QFileInfo::exists(pagePath));
+                QVERIFY(QFileInfo(pagePath).size() > 0);
+            }
+
+            const ConversionResult webpRes = Converter::runSync(multiPdf, "webp", opts, tools);
+            QVERIFY2(webpRes.ok, qPrintable(webpRes.error));
+            QCOMPARE(webpRes.outputFiles.size(), 2);
+            for (const QString &pagePath : webpRes.outputFiles) {
+                QVERIFY(QFileInfo::exists(pagePath));
+                QVERIFY(QFileInfo(pagePath).size() > 0);
+            }
+        }
+    }
+
     void cliHeadlessCommandsWork()
     {
         QCOMPARE(Cli::run({"morph", "check", "--json"}), 0);
