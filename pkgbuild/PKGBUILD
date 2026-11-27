@@ -1,0 +1,35 @@
+pkgname=morph
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Convert videos, audio, images, documents, and archives locally'
+arch=('x86_64' 'aarch64')
+license=('MIT')
+depends=(
+  'qt6-base'
+  'qt6-declarative'
+  'qt6-wayland'
+  'xdg-desktop-portal'
+  'ffmpeg'
+  'imagemagick'
+  'libreoffice-fresh'
+  'poppler'
+  'ghostscript'
+  'qpdf'
+  '7zip'
+)
+makedepends=('gcc' 'make')
+source=()
+sha256sums=()
+
+build() {
+  cd "$startdir/.."
+  ./bin/build
+}
+
+package() {
+  cd "$startdir/.."
+  install -Dm755 build/morph "$pkgdir/usr/bin/morph"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$startdir/morph.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/morph.svg"
+  install -Dm644 "$startdir/morph.desktop" "$pkgdir/usr/share/applications/morph.desktop"
+}

@@ -1,0 +1,6 @@
+{
+  "Added %n files": { "one": "Added %n file", "other": "Added %n files" },
+  "Converted %n files": { "one": "Converted %n file", "other": "Converted %n files" },
+  "%n pages": { "one": "%n page", "other": "%n pages" },
+  "%n files": { "one": "%n file", "other": "%n files" }
+}
